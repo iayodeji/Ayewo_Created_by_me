@@ -1,11 +1,25 @@
+import os
+import ctypes
+from importlib.util import find_spec
+import platform
 import argparse
 from pathlib import Path
-
+# Pre-load c10.dll to prevent WinError 1114 on Windows
+if platform.system() == "Windows":
+    try:
+        spec = find_spec("torch")
+        if spec and spec.origin:
+            dll_path = os.path.join(os.path.dirname(spec.origin), "lib", "c10.dll")
+            if os.path.exists(dll_path):
+                ctypes.CDLL(os.path.normpath(dll_path))
+    except Exception:
+        pass
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, random_split
 from torchvision import datasets, transforms
 from torchvision.models import MobileNet_V2_Weights, mobilenet_v2
+from tqdm import tqdm
 
 
 def parse_args() -> argparse.Namespace:
@@ -58,7 +72,7 @@ def train(args: argparse.Namespace) -> None:
     for epoch in range(args.epochs):
         model.train()
         train_loss = 0.0
-        for images, labels in train_loader:
+        for images, labels in tqdm(train_loader, desc=f"Epoch {epoch + 1}/{args.epochs} [train]"):
             images = images.to(device)
             labels = labels.to(device)
             optimizer.zero_grad()
@@ -72,7 +86,7 @@ def train(args: argparse.Namespace) -> None:
         correct = 0
         total = 0
         with torch.no_grad():
-            for images, labels in val_loader:
+            for images, labels in tqdm(val_loader, desc=f"Epoch {epoch + 1}/{args.epochs} [val]"):
                 images = images.to(device)
                 labels = labels.to(device)
                 outputs = model(images)

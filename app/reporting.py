@@ -1,14 +1,14 @@
 import io
 from typing import Iterable
 
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-
 # Fits filename text into the PDF table column width on letter-sized pages.
 MAX_FILENAME_LENGTH = 38
 
 
 def build_batch_pdf(batch_id: str, rows: Iterable[dict]) -> bytes:
+    from reportlab.lib.pagesizes import letter
+    from reportlab.pdfgen import canvas
+
     buffer = io.BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=letter)
     width, height = letter
