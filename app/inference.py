@@ -1,5 +1,6 @@
 import base64
 import io
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Lock
@@ -12,6 +13,8 @@ from torch import nn
 from torchvision import transforms
 from torchvision.models import MobileNet_V2_Weights, mobilenet_v2
 
+
+logger = logging.getLogger(__name__)
 
 LABELS = ["Parasitized", "Uninfected"]
 LOW_CONFIDENCE_THRESHOLD = 75.0
@@ -106,9 +109,14 @@ class MalariaInferenceService:
         for index, image in enumerate(images):
             predicted_index = int(torch.argmax(probabilities[index]).item())
             confidence = float(probabilities[index, predicted_index].item() * 100.0)
-            gradcam_image = (
-                self._make_gradcam(transformed[index : index + 1], image) if include_gradcam else None
-            )
+            gradcam_image = None
+            if include_gradcam:
+                try:
+                    gradcam_image = self._make_gradcam(transformed[index : index + 1], image)
+                except (ImportError, OSError, RuntimeError):
+                    # A screening result remains useful if the optional
+                    # explanation dependency is unavailable on a host.
+                    logger.exception("Grad-CAM generation failed; returning prediction without attention map.")
             results.append(
                 PredictionResult(
                     result=LABELS[predicted_index],
